@@ -127,5 +127,4 @@ dependencies:
     - yacs==0.1.8
     - yapf==0.30.0
     - zipp==3.3.0
-prefix: /home/xianyu/anaconda3/envs/sp_baseline
 

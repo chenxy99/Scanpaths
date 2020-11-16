@@ -15,7 +15,7 @@ Requirements
 - Python 3.7
 - PyTorch 1.6 (along with torchvision)
 
-- We also provide the conda environment [sc_rtl.yml](https://github.com/chenxy99/SD-FSIC/blob/master/sc_rtl.yml), you can directly run
+- We also provide the conda environment ``sp_baseline.yml``, you can directly run
 
 ```bash
 $ conda env create -f sp_baseline.yml

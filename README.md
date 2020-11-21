@@ -9,6 +9,10 @@ If you use our code or data, please cite our paper:
 Anonymous submission for CVPR 2021, paper ID 443.
 ```
 
+Disclaimer
+------------------
+We adopt the implementation of SED and STDE from [`VAME`](https://github.com/dariozanca/VAME) as two of our evaluation metrics in the [`Visual Attention Models`](https://ieeexplore.ieee.org/document/9207438). For the ScanMatch evaluation metric, we adopt the part of [`GazeParser`](https://github.com/dariozanca/VAME) package. Based on the [`checkpoint`](https://github.com/nocaps-org/updown-baseline/blob/master/updown/utils/checkpointing.py) implementation from [`updown-baseline`](https://github.com/nocaps-org/updown-baseline), we slightly modify it to accommodate in our pipeline.
+
 Requirements
 ------------------
 

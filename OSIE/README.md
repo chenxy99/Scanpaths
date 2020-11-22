@@ -21,7 +21,7 @@ The typical `<dataset_root>` should be structured as follows
         osie_fixations_test.json
         osie_fixations_train.json
         osie_fixations_validation.json
-    -- ./images                                     # image stimuli
+    -- ./stimuli                                     # image stimuli
 ```
 
 Training your own network on OSIE dataset

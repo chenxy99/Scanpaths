@@ -11,7 +11,7 @@ This dataset is mainly based on [`AiR: Attention with Reasoning Capability`](htt
 $ python ./preprocess/preprocess_fixations.py
 ```
 
-The machine attention from AiR dataset can be preprocessed by the released code [`Air`](https://github.com/szzexpoi/AiR). Alternatively, we provide the pre-processed [`fixation files`](https://drive.google.com/file/d/17q7lTvAMejyR48BNlE6vVYSPCwvo_6sI/view?usp=sharing), ['stimuli files'](https://drive.google.com/file/d/1Dyi0y6ktSSwthhU90uOmM1fkrptAdzJK/view?usp=sharing) as well as the [`machine attention files`](https://drive.google.com/file/d/1mpeLq_nORcOW4GKXwpjWzgJaMkHJC9KX/view?usp=sharing), and therefore you can directly download them.
+The machine attention from AiR dataset can be preprocessed by the released code [`Air`](https://github.com/szzexpoi/AiR). Alternatively, we provide the pre-processed [`fixation files`](https://drive.google.com/file/d/17q7lTvAMejyR48BNlE6vVYSPCwvo_6sI/view?usp=sharing), [`stimuli files`](https://drive.google.com/file/d/1Dyi0y6ktSSwthhU90uOmM1fkrptAdzJK/view?usp=sharing) as well as the [`machine attention files`](https://drive.google.com/file/d/1mpeLq_nORcOW4GKXwpjWzgJaMkHJC9KX/view?usp=sharing), and therefore you can directly download them.
 
 The typical `<dataset_root>` should be structured as follows
 

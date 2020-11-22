@@ -17,7 +17,7 @@ The typical `<dataset_root>` should be structured as follows
 
 ```
 <dataset_root>
-	-- ./attention_reasoning                        # machine attention from AiR
+    -- ./attention_reasoning                        # machine attention from AiR
     -- ./fixations                                  # fixation and the training, validation and test splits
         AiR_fixations_test.json
         AiR_fixations_train.json

@@ -17,20 +17,15 @@ import datetime
 import json
 
 from dataset.dataset import OSIE, OSIE_evaluation, OSIE_rl
-# from models.baseline import baseline
-# from models.baseline_egcb import baseline
-# from models.baseline_attention import baseline
-from models.baseline_attention_vgg import baseline
+from models.baseline_attention import baseline
 from models.loss import CrossEntropyLoss, DurationSmoothL1Loss, MLPRayleighDistribution, MLPLogNormalDistribution, \
     LogAction, LogDuration, NSS, CC, KLD
 from utils.checkpointing import CheckpointManager
 from utils.recording import RecordManager
-from utils.evaluation import human_evaluation, evaluation, pairs_multimatch_eval, pairs_eval, pairs_VAME_eval, \
-    pairs_scanmatch_eval
+from utils.evaluation import human_evaluation, evaluation, pairs_eval
 from utils.logger import Logger
 from opts import parse_opt
 from utils.evaltools.scanmatch import ScanMatch
-from visualization.vistools import show_sequential_action_map, show_saliency_map, show_image
 from models.sampling import Sampling
 
 args = parse_opt()
@@ -75,19 +70,15 @@ def main():
     logger.info("The args corresponding to training process are: ")
     for (key, value) in vars(args).items():
         logger.info("{key:20}: {value:}".format(key=key, value=value))
-    # else:
-    #     # read hparams
-    #     with open(hparams_file, 'r') as f:
-    #         args.__dict__ = json.load(f)
 
     # --------------------------------------------------------------------------------------------
     #   INSTANTIATE VOCABULARY, DATALOADER, MODEL, OPTIMIZER
     # --------------------------------------------------------------------------------------------
 
-    train_dataset = OSIE(args.img_dir, args.fix_dir, args.sal_dir,
+    train_dataset = OSIE(args.img_dir, args.fix_dir,
                          blur_sigma=args.blur_sigma, type="train", transform=transform)
     train_dataset_rl = OSIE_rl(args.img_dir, args.fix_dir, type="train", transform=transform)
-    validation_dataset = OSIE_evaluation(args.img_dir, args.fix_dir, args.sal_dir,
+    validation_dataset = OSIE_evaluation(args.img_dir, args.fix_dir,
                                          type="validation", transform=transform)
 
     train_loader = DataLoader(
@@ -138,7 +129,6 @@ def main():
     iteration = record_manager.get_iteration()
     best_metric = record_manager.get_best_metric()
 
-
     # Checkpoint manager to serialize checkpoints periodically while training and keep track of
     # best performing checkpoint.
     checkpoint_manager = CheckpointManager(model, optimizer, checkpoints_dir, mode="max", best_metric=best_metric)
@@ -170,8 +160,6 @@ def main():
 
     lr_scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda, last_epoch=iteration)
 
-
-
     if len(args.gpu_ids) > 1:
         model = nn.DataParallel(model, args.gpu_ids)
 
@@ -180,24 +168,17 @@ def main():
         if epoch < args.start_rl_epoch:
             model.train()
             for i_batch, batch in enumerate(train_loader):
-                tmp = [batch["images"], batch["saliency_maps"], batch["fixation_maps"],
-                       batch["scanpaths"], batch["durations"],
+                tmp = [batch["images"], batch["scanpaths"], batch["durations"],
                        batch["action_masks"], batch["duration_masks"]]
                 tmp = [_ if _ is None else _.cuda() for _ in tmp]
-                images, saliency_maps, fixation_maps, scanpaths, durations, action_masks, duration_masks = tmp
+                images, scanpaths, durations, action_masks, duration_masks = tmp
 
                 optimizer.zero_grad()
-                # predicts = model(images, scanpaths, durations, duration_masks)
                 predicts = model(images)
 
                 loss_actions = CrossEntropyLoss(predicts["actions"], scanpaths, action_masks)
                 loss_duration = MLPLogNormalDistribution(predicts["log_normal_mu"], predicts["log_normal_sigma2"],
                                                          durations, duration_masks)
-                # loss_NSS = NSS(predicts["saliency_map_predictions"], fixation_maps)
-                # loss_CC = CC(predicts["saliency_map_predictions"], saliency_maps)
-                # loss_KLD = KLD(predicts["saliency_map_predictions"], saliency_maps)
-                # loss = loss_actions + args.lambda_1 * loss_duration + args.lambda_2 * loss_NSS \
-                #        + args.lambda_3 * loss_CC + args.lambda_4 * loss_KLD
                 loss = loss_actions + args.lambda_1 * loss_duration
 
                 loss.backward()
@@ -212,9 +193,6 @@ def main():
                 tensorboard_writer.add_scalar("loss/loss", loss, iteration)
                 tensorboard_writer.add_scalar("loss/loss_actions", loss_actions, iteration)
                 tensorboard_writer.add_scalar("loss/loss_duration", loss_duration, iteration)
-                # tensorboard_writer.add_scalar("loss/loss_NSS", loss_NSS, iteration)
-                # tensorboard_writer.add_scalar("loss/loss_CC", loss_CC, iteration)
-                # tensorboard_writer.add_scalar("loss/loss_KLD", loss_KLD, iteration)
                 tensorboard_writer.add_scalar("learning_rate", optimizer.param_groups[0]["lr"], iteration)
         # reinforcement learning stage
         else:
@@ -223,8 +201,6 @@ def main():
             ScanMatchwithDuration = ScanMatch(Xres=320, Yres=240, Xbin=16, Ybin=12, Offset=(0, 0), TempBin=50,
                                               Threshold=3.5)
             ScanMatchwithoutDuration = ScanMatch(Xres=320, Yres=240, Xbin=16, Ybin=12, Offset=(0, 0), Threshold=3.5)
-            x_granularity = float(args.width / args.map_width)
-            y_granularity = float(args.height / args.map_height)
             for i_batch, batch in enumerate(train_rl_loader):
                 tmp = [batch["images"], batch["fix_vectors"]]
                 tmp = [_ if not torch.is_tensor(_) else _.cuda() for _ in tmp]
@@ -272,13 +248,6 @@ def main():
                 neg_log_actions_tensor = torch.cat(neg_log_actions_batch, dim=0)
                 neg_log_durations_tensor = torch.cat(neg_log_durations_batch, dim=0)
                 # use the mean as reward
-                # metrics_reward_tensor = torch.cat(metrics_reward_batch, dim=0)
-                # baseline_reward_tensor = metrics_reward_tensor.mean(0, keepdim=True)
-                # loss_actions = (neg_log_actions_tensor * (metrics_reward_tensor - baseline_reward_tensor).sum(-1)).sum()
-                # loss_duration = (
-                #             neg_log_durations_tensor * (metrics_reward_tensor - baseline_reward_tensor).sum(-1)).sum()
-                # loss = loss_actions + loss_duration
-                # use the hmean as reward
                 metrics_reward_tensor = torch.cat(metrics_reward_batch, dim=0)
                 metrics_reward_hmean = scipy.stats.hmean(metrics_reward_tensor[:, :, 5:7].cpu(), axis=-1)
                 metrics_reward_hmean_tensor = torch.tensor(metrics_reward_hmean).to(metrics_reward_tensor.get_device())
@@ -315,15 +284,13 @@ def main():
     def validation(iteration):
         model.eval()
         repeat_num = args.eval_repeat_num
-        x_granularity = float(args.width / args.map_width)
-        y_granularity = float(args.height / args.map_height)
         all_gt_fix_vectors = []
         all_predict_fix_vectors = []
         with tqdm(total=len(validation_loader) * repeat_num) as pbar_val:
             for i_batch, batch in enumerate(validation_loader):
-                tmp = [batch["images"], batch["saliency_maps"], batch["fix_vectors"]]
+                tmp = [batch["images"], batch["fix_vectors"]]
                 tmp = [_ if not torch.is_tensor(_) else _.cuda() for _ in tmp]
-                images, saliency_maps, gt_fix_vectors = tmp
+                images, gt_fix_vectors = tmp
                 N, C, H, W = images.shape
 
                 with torch.no_grad():
@@ -364,12 +331,12 @@ def main():
 
 
     # get the human baseline score
-    # human_metrics, human_metrics_std = human_evaluation(validation_loader)
-    # logger.info("The metrics for human performance are: ")
-    # for metrics_key in human_metrics.keys():
-    #     for (key, value) in human_metrics[metrics_key].items():
-    #         logger.info("{metrics_key:10}-{key:15}: {value:.4f} +- {std:.4f}".format
-    #                     (metrics_key=metrics_key, key=key, value=value, std=human_metrics_std[metrics_key][key]))
+    human_metrics, human_metrics_std, _ = human_evaluation(validation_loader)
+    logger.info("The metrics for human performance are: ")
+    for metrics_key in human_metrics.keys():
+        for (key, value) in human_metrics[metrics_key].items():
+            logger.info("{metrics_key:10}-{key:15}: {value:.4f} +- {std:.4f}".format
+                        (metrics_key=metrics_key, key=key, value=value, std=human_metrics_std[metrics_key][key]))
 
     tqdm_total = len(train_loader) * args.start_rl_epoch + len(train_rl_loader) * (args.epoch - args.start_rl_epoch)
     with tqdm(total=tqdm_total, initial=iteration + 1) as pbar:

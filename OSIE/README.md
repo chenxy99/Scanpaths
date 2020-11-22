@@ -30,14 +30,14 @@ Training your own network on OSIE dataset
 We have set all the corresponding hyper-parameters in ``opt.py``. Hence you can directly execute the following command to train the network.
 
 ```bash
-$ CUDA_VISIBLE_DEVICES=0, 1 python train.py
+$ CUDA_VISIBLE_DEVICES=0,1 python train.py
 ```
 
 ## Evaluate on test split
 
-We also provide the [`pretrained model`](https://drive.google.com/file/d/121Liw1H2kT3vZpWlZ2q_Dlo-6SW9FxL8/view?usp=sharing), or you can use your own trained network to evaluate the performance on test split.
+We also provide the [`pretrained model`](https://drive.google.com/file/d/1SWH3w3XTX_i7bkY3YMTAXV2IKwEnDH5S/view?usp=sharing), or you can use your own trained network to evaluate the performance on test split.
 
 ```bash
-$ CUDA_VISIBLE_DEVICES=0, 1 python test.py --evaluation_dir "./assets/pretrained_model"
+$ CUDA_VISIBLE_DEVICES=0,1 python test.py --evaluation_dir "./assets/pretrained_model"
 ```
 

@@ -19,23 +19,15 @@ import sys
 
 from dataset.dataset import AiR, AiR_evaluation
 from models.baseline_attention import baseline
-from models.loss import CrossEntropyLoss, DurationSmoothL1Loss
-from utils.checkpointing import CheckpointManager
-from utils.recording import RecordManager
-from utils.evaluation import human_evaluation, evaluation, evaluation_performance_related, human_evaluation_mismatch, \
-    human_evaluation_upperbound
+from utils.evaluation import human_evaluation, evaluation_performance_related
 from utils.logger import Logger
-from visualization.vistools import show_sequential_action_map, show_saliency_map, show_image
 from models.sampling import Sampling
 
 parser = argparse.ArgumentParser(description="Scanpath prediction for images")
 parser.add_argument("--mode", type=str, default="test", help="Selecting running mode (default: test)")
 parser.add_argument("--img_dir", type=str, default="./data/stimuli", help="Directory to the image data (stimuli)")
-parser.add_argument("--fix_dir", type=str, default="./data/fixations_18labels", help="Directory to the raw fixation file")
+parser.add_argument("--fix_dir", type=str, default="./data/fixations", help="Directory to the raw fixation file")
 parser.add_argument("--att_dir", type=str, default="./data/attention_reasoning", help="Directory to the attention maps")
-parser.add_argument("--bert_pretrained_dir", type=str, default="./data/question_embedding",
-                    help="Directory to the bert pretrained hidden state")
-# parser.add_argument("--anno_dir", type=str, default="../data/maps", help="Directory to the saliency maps")
 parser.add_argument("--width", type=int, default=320, help="Width of input data")
 parser.add_argument("--height", type=int, default=240, help="Height of input data")
 parser.add_argument("--map_width", type=int, default=40, help="Height of output data")
@@ -43,12 +35,11 @@ parser.add_argument("--map_height", type=int, default=30, help="Height of output
 parser.add_argument("--batch", type=int, default=8, help="Batch size")
 parser.add_argument("--seed", type=int, default=0, help="Random seed")
 parser.add_argument("--gpu_ids", type=list, default=[0], help="Used gpu ids")
-parser.add_argument("--evaluation_dir", type=str, default="./assets/where_fixate_analysis_upsampling/baseline_TG_SCST_CDL",
+parser.add_argument("--evaluation_dir", type=str, default="./assets/pretrained_model",
                     help="Resume from a specific directory")
 parser.add_argument("--eval_repeat_num", type=int, default=10, help="Repeat number for evaluation")
 parser.add_argument("--min_length", type=int, default=1, help="Minimum length of the generated scanpath")
 parser.add_argument("--max_length", type=int, default=16, help="Maximum length of the generated scanpath")
-parser.add_argument("--performance_related", type=bool, default=True, help="Consider the performance related or not")
 parser.add_argument("--ablate_attention_info", type=bool, default=False, help="Ablate the attention information or not")
 args = parser.parse_args()
 
@@ -70,9 +61,8 @@ def main():
 
     # load logger
     log_dir = args.evaluation_dir
-    hparams_file = os.path.join(log_dir, "hparams.json")
     checkpoints_dir = os.path.join(log_dir, "checkpoints")
-    log_file = os.path.join(log_dir, "log_test11.txt")
+    log_file = os.path.join(log_dir, "log_test.txt")
     predicts_file = os.path.join(log_dir, "test_predicts.json")
     logger = Logger(log_file)
 
@@ -80,7 +70,7 @@ def main():
     for (key, value) in vars(args).items():
         logger.info("{key:20}: {value:}".format(key=key, value=value))
 
-    test_dataset = AiR_evaluation(args.img_dir, args.fix_dir, args.att_dir, args.bert_pretrained_dir,
+    test_dataset = AiR_evaluation(args.img_dir, args.fix_dir, args.att_dir,
                                   type="test", transform=transform)
 
     test_loader = DataLoader(
@@ -91,10 +81,9 @@ def main():
         collate_fn=test_dataset.collate_func
     )
 
-    model = baseline(embed_size=512, bert_embed_size=768,
-                     convLSTM_length=args.max_length, min_length=args.min_length).cuda()
+    model = baseline(embed_size=512, convLSTM_length=args.max_length, min_length=args.min_length).cuda()
 
-    sampling = Sampling(convLSTM_length=args.max_length, min_length=args.min_length, map_width = args.map_width,
+    sampling = Sampling(convLSTM_length=args.max_length, min_length=args.min_length, map_width=args.map_width,
         map_height=args.map_height)
 
     # Load checkpoint to start evaluation.
@@ -109,7 +98,7 @@ def main():
     if len(args.gpu_ids) > 1:
         model = nn.DataParallel(model, args.gpu_ids)
 
-    # # get the human baseline score
+    # get the human baseline score
     human_metrics, human_metrics_std, _ = human_evaluation(test_loader)
     logger.info("The metrics for human performance are: ")
     for category_key in human_metrics.keys():
@@ -120,21 +109,8 @@ def main():
                              std=human_metrics_std[category_key][metrics_key][key]))
         logger.info("-" * 40)
 
-    # get the best human baseline score
-    # human_metrics, human_metrics_std, _ = human_evaluation_upperbound(test_loader)
-    # logger.info("The metrics for best human performance are: ")
-    # for category_key in human_metrics.keys():
-    #     for metrics_key in human_metrics[category_key].keys():
-    #         for (key, value) in human_metrics[category_key][metrics_key].items():
-    #             logger.info("{category_key:12}: {metrics_key:10}-{key:15}: {value:.4f} +- {std:.4f}".format
-    #                         (category_key=category_key, metrics_key=metrics_key, key=key, value=value,
-    #                          std=human_metrics_std[category_key][metrics_key][key]))
-    #     logger.info("-" * 40)
-
     model.eval()
     repeat_num = args.eval_repeat_num
-    x_granularity = float(args.width / args.map_width)
-    y_granularity = float(args.height / args.map_height)
     all_gt_fix_vectors = []
     all_predict_fix_vectors = []
     all_performances = []
@@ -142,21 +118,17 @@ def main():
     predict_results = []
     with tqdm(total=len(test_loader) * repeat_num) as pbar_test:
         for i_batch, batch in enumerate(test_loader):
-            tmp = [batch["images"], batch["fix_vectors"], batch["performances"], batch["projected_labels"],
-                   batch["attention_maps"], batch["bert_Qsemantics"]]
+            tmp = [batch["images"], batch["fix_vectors"], batch["performances"], batch["attention_maps"],
+                   batch["question_ids"], batch["img_names"]]
             tmp = [_ if not torch.is_tensor(_) else _.cuda() for _ in tmp]
-            images, gt_fix_vectors, performances, projected_labels, attention_maps, bert_Qsemantics = tmp
+            images, gt_fix_vectors, performances, attention_maps, question_ids, img_names = tmp
             N, C, H, W = images.shape
-            # given_performance = [True] * args.eval_repeat_num + [False] * args.eval_repeat_num
-            # given_performance = [True, False] * args.eval_repeat_num
 
             if args.ablate_attention_info:
                 attention_maps *= 0
 
-            # all_allocated_performances.extend([given_performance])
             with torch.no_grad():
-                predict = model(images, bert_Qsemantics, projected_labels, attention_maps)
-                # predict = model(images, bert_Qsemantics)
+                predict = model(images, attention_maps)
 
             good_log_normal_mu = predict["good_log_normal_mu"]
             good_log_normal_sigma2 = predict["good_log_normal_sigma2"]
@@ -178,6 +150,20 @@ def main():
                     images, prob_sample_actions, durations, sample_actions)
                 all_predict_fix_vectors.extend(sampling_random_predict_fix_vectors)
 
+                for index in range(N):
+                    predict_result = dict()
+                    one_sampling_random_predict_fix_vectors = sampling_random_predict_fix_vectors[index]
+                    fix_vector_array = np.array(one_sampling_random_predict_fix_vectors.tolist())
+                    predict_result["img_names"] = img_names[index]
+                    predict_result["qid"] = question_ids[index]
+                    predict_result["repeat_id"] = trial + 1
+                    predict_result["performance"] = True
+                    predict_result["X"] = list(fix_vector_array[:, 0])
+                    predict_result["Y"] = list(fix_vector_array[:, 1])
+                    predict_result["T"] = list(fix_vector_array[:, 2] * 1000)
+                    predict_result["length"] = len(predict_result["X"])
+                    predict_results.append(predict_result)
+
                 all_gt_fix_vectors.extend(gt_fix_vectors)
                 all_performances.extend(performances)
                 all_allocated_performances.extend([False] * N)
@@ -189,14 +175,27 @@ def main():
                 sampling_random_predict_fix_vectors, _, _ = sampling.generate_scanpath(
                     images, prob_sample_actions, durations, sample_actions)
                 all_predict_fix_vectors.extend(sampling_random_predict_fix_vectors)
+
+                for index in range(N):
+                    predict_result = dict()
+                    one_sampling_random_predict_fix_vectors = sampling_random_predict_fix_vectors[index]
+                    fix_vector_array = np.array(one_sampling_random_predict_fix_vectors.tolist())
+                    predict_result["img_names"] = img_names[index]
+                    predict_result["qid"] = question_ids[index]
+                    predict_result["repeat_id"] = trial + 1
+                    predict_result["performance"] = False
+                    predict_result["X"] = list(fix_vector_array[:, 0])
+                    predict_result["Y"] = list(fix_vector_array[:, 1])
+                    predict_result["T"] = list(fix_vector_array[:, 2] * 1000)
+                    predict_result["length"] = len(predict_result["X"])
+                    predict_results.append(predict_result)
+
                 pbar_test.update(1)
 
 
     cur_metrics, cur_metrics_std, _ = evaluation_performance_related(all_gt_fix_vectors, all_predict_fix_vectors,
                                                                   all_performances, all_allocated_performances)
 
-    # for index in range(len(predict_results)):
-    #     predict_results[index]["scores"] = scores_of_each_images[index]
     with open(predicts_file, 'w') as f:
         json.dump(predict_results, f, indent=2)
 

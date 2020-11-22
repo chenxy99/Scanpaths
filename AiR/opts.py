@@ -5,11 +5,8 @@ def parse_opt():
     parser = argparse.ArgumentParser(description="Scanpath prediction for images")
     parser.add_argument("--mode", type=str, default="train", help="Selecting running mode (default: train)")
     parser.add_argument("--img_dir", type=str, default="./data/stimuli", help="Directory to the image data (stimuli)")
-    parser.add_argument("--fix_dir", type=str, default="./data/fixations_18labels", help="Directory to the raw fixation file")
+    parser.add_argument("--fix_dir", type=str, default="./data/fixations", help="Directory to the raw fixation file")
     parser.add_argument("--att_dir", type=str, default="./data/attention_reasoning", help="Directory to the attention maps")
-    parser.add_argument("--bert_pretrained_dir", type=str, default="./data/question_embedding",
-                        help="Directory to the bert pretrained hidden state")
-    # parser.add_argument("--anno_dir", type=str, default="../data/maps", help="Directory to the saliency maps")
     parser.add_argument("--width", type=int, default=320, help="Width of input data")
     parser.add_argument("--height", type=int, default=240, help="Height of input data")
     parser.add_argument("--map_width", type=int, default=40, help="Height of output data")
@@ -25,12 +22,9 @@ def parse_opt():
     parser.add_argument("--seed", type=int, default=0, help="Random seed")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
     parser.add_argument("--rl_lr_initial_decay", type=float, default=0.5, help="Initial decay of learning rate of rl")
-    # parser.add_argument("--lr_decay", type=float, default=0.25, help="Learning rate decay factor")
-    # parser.add_argument("--lr_decay_step", type=int, default=10, help="Learning rate decay step")
     parser.add_argument("--weight_decay", type=float, default=5e-5, help="Weight decay")
     parser.add_argument("--gpu_ids", type=list, default=[0, 1], help="Used gpu ids")
     parser.add_argument("--log_root", type=str, default="./assets/", help="Log root")
-    # parser.add_argument("--resume", type=bool, default=False, help="Resume from checkpoint or not")
     parser.add_argument("--resume_dir", type=str, default="", help="Resume from a specific directory")
     parser.add_argument("--center_bias", type=bool, default=True, help="Adding center bias or not")
     parser.add_argument("--lambda_1", type=float, default=1, help="Hyper-parameter for duration loss term")
@@ -39,9 +33,6 @@ def parse_opt():
     parser.add_argument("--eval_repeat_num", type=int, default=10, help="Repeat number for evaluation")
     parser.add_argument("--min_length", type=int, default=1, help="Minimum length of the generated scanpath")
     parser.add_argument("--max_length", type=int, default=16, help="Maximum length of the generated scanpath")
-    parser.add_argument("--projected_label_length", type=int, default=18, help="Length of the projected labels")
-    parser.add_argument("--performance_related", type=bool, default=True,
-                        help="Consider the performance related or not")
     parser.add_argument("--ablate_attention_info", type=bool, default=False,
                         help="Ablate the attention information or not")
     parser.add_argument("--supervised_save", type=bool, default=True,

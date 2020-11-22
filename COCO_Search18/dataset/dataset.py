@@ -30,7 +30,6 @@ class COCO_Search18(Dataset):
                  COCO_Search18_stimuli_dir,
                  COCO_Search18_fixations_dir,
                  COCO_Search18_detector_dir,
-                 COCO_Search18_saliencymap_dir=None,
                  action_map=(30, 40),
                  resize=(240, 320),
                  max_length=16,
@@ -43,7 +42,6 @@ class COCO_Search18(Dataset):
         self.COCO_Search18_stimuli_dir = COCO_Search18_stimuli_dir
         self.COCO_Search18_fixations_dir = COCO_Search18_fixations_dir
         self.COCO_Search18_detector_dir = COCO_Search18_detector_dir
-        self.COCO_Search18_saliencymap_dir = COCO_Search18_saliencymap_dir
         self.action_map = action_map
         self.resize = resize
         self.max_length = max_length
@@ -74,14 +72,6 @@ class COCO_Search18(Dataset):
             if self.detector[index]["category"] in self.object_name and self.detector[index]["score"] >= self.detector_threshold:
                 self.imgs_2_det.setdefault(self.detector[index]["image_id"], []).append(self.detector[index])
 
-        # duration_length = np.zeros((len(self.fixations), 1), np.float32)
-        # for index in range(len(self.fixations)):
-        #     fixation = self.fixations[index]
-        #     duration_length[index] = fixation["length"]
-        # sns.distplot(np.array(duration_length))
-        # plt.show()
-
-
     def __len__(self):
         return len(self.fixations)
 
@@ -95,26 +85,6 @@ class COCO_Search18(Dataset):
         plt.imshow(img)
         plt.plot(x, y, 'xb-')
         plt.show()
-
-    # def get_fixation(self, fix_path):
-    #     fix_data = loadmat(fix_path)
-    #     fixation_map = np.zeros((2 * self.resize[0], 2 * self.resize[1]), dtype=np.float32)
-    #     for fix_id in range(fix_data["fix_x"].shape[-1]):
-    #         x, y = fix_data["fix_x"][0, fix_id], fix_data["fix_y"][0, fix_id]
-    #         x, y = int(x * (2 * self.resize[1] / self.origin_size[1])), int(y * (2 * self.resize[0] / self.origin_size[0]))
-    #         fixation_map[y, x] = 1
-    #     return fixation_map
-
-    def get_fixation(self, pos_x, pos_y, duration_raw, fixation):
-        fixation_map = np.zeros((2 * self.resize[0], 2 * self.resize[1]), dtype=np.float32)
-        origin_size_y, origin_size_x = fixation["height"], fixation["width"]
-        for fix_id in range(pos_x.shape[0]):
-            x, y = pos_x[fix_id], pos_y[fix_id]
-            x, y = int(x * (2 * self.resize[1] / origin_size_x)), int(y * (2 * self.resize[0] / origin_size_y))
-            fixation_map[y, x] = duration_raw[fix_id] / 1000
-        saliency_map = filters.gaussian_filter(fixation_map, 30)
-        saliency_map /= (saliency_map.sum() + epsilon)
-        return fixation_map, saliency_map
 
     def extract_scanpath_info(self, fixation_sample):
         scanpath = np.zeros((self.max_length, self.action_map[0], self.action_map[1]), dtype=np.float32)
@@ -154,8 +124,6 @@ class COCO_Search18(Dataset):
                     scanpath[index] /= scanpath[index].sum()
                 target_scanpath[index, 1:] = scanpath[index].reshape(-1)
 
-        # fixation_map, saliency_map = self.get_fixation(pos_x, pos_y, duration_raw, fixation_sample)
-
         return target_scanpath, duration, action_mask, duration_mask
 
 
@@ -167,8 +135,6 @@ class COCO_Search18(Dataset):
 
         image_id = img_name.split(".")[0]
 
-        origin_image = io.imread(img_path).astype(np.float32)
-        # image_resized = resize(image, self.resize, anti_aliasing=True)
         image = Image.open(img_path).convert('RGB')
         det_size_y, det_size_x = image.height, image.width
         origin_size_y, origin_size_x = 320, 512
@@ -255,7 +221,6 @@ class COCO_Search18_evaluation(Dataset):
                  COCO_Search18_stimuli_dir,
                  COCO_Search18_fixations_dir,
                  COCO_Search18_detector_dir,
-                 COCO_Search18_saliencymap_dir = None,
                  action_map=(30, 40),
                  resize=(240, 320),
                  type="validation",
@@ -267,7 +232,6 @@ class COCO_Search18_evaluation(Dataset):
         self.COCO_Search18_stimuli_dir = COCO_Search18_stimuli_dir
         self.COCO_Search18_fixations_dir = COCO_Search18_fixations_dir
         self.COCO_Search18_detector_dir = COCO_Search18_detector_dir
-        self.COCO_Search18_saliencymap_dir = COCO_Search18_saliencymap_dir
         self.action_map = action_map
         self.resize = resize
         self.type = type
@@ -319,15 +283,11 @@ class COCO_Search18_evaluation(Dataset):
     def __getitem__(self, idx):
         fixations = self.fixations_list[idx]
         img_name = fixations[0]["name"]
-        # if img_name == "000000211326.jpg":
-        #     a=1
         task = fixations[0]["task"]
         img_path = join(join(self.COCO_Search18_stimuli_dir, task), img_name)
 
         image_id = img_name.split(".")[0]
 
-        # image = io.imread(img_path).astype(np.float32)
-        # image_resized = resize(image, self.resize, anti_aliasing=True)
         image = Image.open(img_path).convert('RGB')
         det_size_y, det_size_x = image.height, image.width
         origin_size_y, origin_size_x = 320, 512
@@ -335,7 +295,6 @@ class COCO_Search18_evaluation(Dataset):
         resizescale_y = origin_size_y / self.resize[0]
         if self.transform is not None:
             image = self.transform(image)
-        # self.show_image(image/255)
 
         fix_vectors = []
         for ids in range(len(fixations)):
@@ -416,7 +375,6 @@ class COCO_Search18_rl(Dataset):
                  COCO_Search18_stimuli_dir,
                  COCO_Search18_fixations_dir,
                  COCO_Search18_detector_dir,
-                 COCO_Search18_saliencymap_dir = None,
                  action_map=(30, 40),
                  resize=(240, 320),
                  type="train",
@@ -428,7 +386,6 @@ class COCO_Search18_rl(Dataset):
         self.COCO_Search18_stimuli_dir = COCO_Search18_stimuli_dir
         self.COCO_Search18_fixations_dir = COCO_Search18_fixations_dir
         self.COCO_Search18_detector_dir = COCO_Search18_detector_dir
-        self.COCO_Search18_saliencymap_dir = COCO_Search18_saliencymap_dir
         self.action_map = action_map
         self.resize = resize
         self.type = type
@@ -485,8 +442,6 @@ class COCO_Search18_rl(Dataset):
 
         image_id = img_name.split(".")[0]
 
-        # image = io.imread(img_path).astype(np.float32)
-        # image_resized = resize(image, self.resize, anti_aliasing=True)
         image = Image.open(img_path).convert('RGB')
         det_size_y, det_size_x = image.height, image.width
         origin_size_y, origin_size_x = 320, 512
@@ -494,7 +449,6 @@ class COCO_Search18_rl(Dataset):
         resizescale_y = origin_size_y / self.resize[0]
         if self.transform is not None:
             image = self.transform(image)
-        # self.show_image(image/255)
 
         fix_vectors = []
         for ids in range(len(fixations)):
@@ -564,63 +518,3 @@ class COCO_Search18_rl(Dataset):
                 data.items()}  # Turn all ndarray to torch tensor
 
         return data
-
-if __name__ == "__main__":
-    data_root = "../data"
-    transform = transforms.Compose([
-        transforms.Resize((240, 320)),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-    COCO_Search18_stimuli_dir = join(data_root, "images")
-    COCO_Search18_fixations_dir = join(data_root, "fixations")
-    COCO_Search18_dataset = COCO_Search18(COCO_Search18_stimuli_dir, COCO_Search18_fixations_dir,
-                                          None, transform=transform)
-    # test_data = AiR_dataset[0]
-    for ii in range(40, 50):
-        train_data = COCO_Search18_dataset[ii*10]
-
-    train_loader = DataLoader(
-        dataset=COCO_Search18_dataset,
-        batch_size=16,
-        shuffle=True,
-        num_workers=4,
-        collate_fn=COCO_Search18_dataset.collate_func
-    )
-
-    COCO_Search18_val = COCO_Search18_evaluation(COCO_Search18_stimuli_dir, COCO_Search18_fixations_dir,
-                                                 None, transform=transform)
-
-    val_loader = DataLoader(
-        dataset=COCO_Search18_val,
-        batch_size=16,
-        shuffle=True,
-        num_workers=4,
-        collate_fn=COCO_Search18_val.collate_func
-    )
-    # test_data = AiR_dataset[0]
-    for ii in range(40, 50):
-        train_data = COCO_Search18_val[ii]
-
-    for i_batch, batch in tqdm(enumerate(val_loader)):
-        pass
-
-
-    for i_batch, batch in tqdm(enumerate(train_loader)):
-        pass
-
-    AiR_val = AiR_evaluation(AiR_stimuli_dir, AiR_fixations_dir, type="validation", transform=transform)
-
-    test_data = AiR_val[0]
-
-    val_loader = DataLoader(
-        dataset=AiR_val,
-        batch_size=64,
-        shuffle=True,
-        num_workers=4,
-        collate_fn=AiR_val.collate_func
-    )
-
-
-    for i_batch, batch in tqdm(enumerate(val_loader)):
-        pass

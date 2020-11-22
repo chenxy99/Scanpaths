@@ -177,18 +177,16 @@ class predict_head(nn.Module):
                 normal_init(m, std=0.01)
 
 class baseline(nn.Module):
-    def __init__(self, embed_size=512, bert_embed_size=768, convLSTM_length=16, min_length=3, ratio=4,
-                  map_width=40, map_height=30, projected_label_length=18):
+    def __init__(self, embed_size=512, convLSTM_length=16, min_length=1, ratio=4,
+                  map_width=40, map_height=30):
         super(baseline, self).__init__()
         self.embed_size = embed_size
-        self.bert_embed_size = bert_embed_size
         self.ratio = ratio
         self.convLSTM_length = convLSTM_length
         self.min_length = min_length
         self.downsampling_rate = 8
         self.map_width = map_width
         self.map_height = map_height
-        self.projected_label_length = projected_label_length
 
         self.resnet = resnet50(pretrained=True)
         self.dilate_resnet(self.resnet)
@@ -197,46 +195,22 @@ class baseline(nn.Module):
         self.lstm = ConvLSTM(self.embed_size)
 
         self.semantic_embed = nn.Linear(512, embed_size)
-        # self.spatial_embed = nn.Conv2d(1, 1, kernel_size=(30, 40), padding=0, stride=1, bias=True)
         self.spatial_embed = nn.Linear(1200, 1200, bias=True)
         self.semantic_att = semantic_att(embed_size=512)
         self.spatial_att = spatial_att(map_width, map_height)
 
-        # self.label_embeddings = nn.Parameter(torch.randn(1, 2048, self.projected_label_length, 1) / math.sqrt(2048),
-        #                                      requires_grad=True)
-        # self.semantic_att = semantic_att(embed_size=512)
-        # self.semantic_linear = nn.Linear(embed_size, embed_size, bias=True)
 
         self.object_name = ["bottle", "bowl", "car", "chair", "clock", "cup", "fork", "keyboard", "knife",
                             "laptop", "microwave", "mouse", "oven", "potted plant", "sink", "stop sign",
                             "toilet", "tv"]
         self.int2object = {i: self.object_name[i] for i in range(len(self.object_name))}
 
-        # self.performance_sal_layer = nn.Conv2d(512, 512, kernel_size=5, padding=2, stride=1, bias=True)
         self.object_sal_layer = nn.ModuleDict(
             {self.object_name[i]: nn.Conv2d(512, 512, kernel_size=5, padding=2, stride=1, bias=True) for
              i in range(18)})
         self.object_head = predict_head(convLSTM_length)
 
-
-        #language global context block transform
-        self.transform_language_info = nn.Sequential(
-                nn.Conv2d(self.bert_embed_size, self.embed_size // self.ratio, kernel_size=1),
-                nn.LayerNorm([self.embed_size // self.ratio, 1, 1]),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(self.embed_size // self.ratio, self.embed_size, kernel_size=1)
-        )
-
-        # global context block transform
-        self.transform_context_info = nn.Sequential(
-            nn.Conv2d(self.embed_size, self.embed_size // self.ratio, kernel_size=1),
-            nn.LayerNorm([self.embed_size // self.ratio, 1, 1]),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(self.embed_size // self.ratio, self.embed_size, kernel_size=1)
-        )
-
         self.init_weights()
-        self.last_zero_init(self.transform_context_info)
 
     def init_hidden(self, x): #initializing hidden state as all zero
         h = torch.zeros_like(x)
@@ -257,22 +231,6 @@ class baseline(nn.Module):
             block.conv2.dilation = 4
             block.conv2.padding = 4
 
-    def mutual_spatial_pool(self, x, previous_selected_feature_mask):
-        batch, channel, col, row = x.size()
-
-        # [N, 1, H, W]
-        previous_selected_feature_mask = (previous_selected_feature_mask * x).sum(1, keepdim=True)
-        # [N, 1, HW, 1]
-        previous_selected_feature_mask = F.softmax(previous_selected_feature_mask.view(batch, 1, -1), -1).unsqueeze(-1)
-        # [N, 1, C, HW] * [N, 1, HW, 1] = [N, 1, C, 1]
-        context = torch.matmul(x.view(batch, 1, channel, -1), previous_selected_feature_mask)
-        # [N, C, 1, 1]
-        context = context.view(batch, channel, 1, 1)
-        # [N, C, 1, 1]
-        context = self.transform_context_info(context)
-
-        return context
-
     def get_spatial_semantic(self, action_map, visual_feature):
         semantic_feature = action_map.expand_as(visual_feature) * visual_feature
         semantic_feature = semantic_feature.mean(1, keepdims=True)
@@ -284,7 +242,6 @@ class baseline(nn.Module):
         semantic_feature = semantic_feature.view(visual_feature.shape[0], visual_feature.shape[1], -1).mean(-1)
 
         return semantic_feature
-
 
     def forward(self, images, attention_maps, tasks):
         # scanpath is used for the extract embedding feature to the ConvLSTM modules  (We do not use it at this model)
@@ -307,8 +264,6 @@ class baseline(nn.Module):
 
         spatial_lists = list()
         semantic_lists = list()
-
-        # attention_maps = images.new_zeros((batch, 1, self.map_height, self.map_width))
 
         spatial_feature = F.relu(self.get_spatial_semantic(attention_maps, visual_feature))
         spatial_feature = self.spatial_embed(spatial_feature.view(batch, 1, -1)).view(batch, 1, 30, 40)
@@ -347,7 +302,6 @@ class baseline(nn.Module):
             spatial_mem = self.spatial_att(torch.cat([_ for _ in spatial_lists], 1), spatial_feature)
             semantic_mem = self.semantic_att(torch.cat([_.unsqueeze(1) for _ in semantic_lists], 1), semantic_feature)
 
-
         predict = dict()
         for predicts, save_predict in zip([predict_alls], [predict]):
             actions_pools = list()
@@ -384,8 +338,6 @@ class baseline(nn.Module):
 
         spatial_lists = list()
         semantic_lists = list()
-
-        # attention_maps = images.new_zeros((batch, 1, self.map_height, self.map_width))
 
         spatial_feature = F.relu(self.get_spatial_semantic(attention_maps, visual_feature))
         spatial_feature = self.spatial_embed(spatial_feature.view(batch, 1, -1)).view(batch, 1, 30, 40)
@@ -457,7 +409,6 @@ class baseline(nn.Module):
     def init_weights(self):
         for modules in [self.sal_conv.modules(), self.object_sal_layer.modules(),
                         self.semantic_embed.modules(), self.spatial_embed.modules()]:
-                        # self.transform_context_info.modules(), self.transform_language_info.modules()]:
             for m in modules:
                 if isinstance(m, nn.Conv2d):
                     xavier_init(m)

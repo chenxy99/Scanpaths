@@ -17,21 +17,15 @@ import datetime
 import json
 
 from dataset.dataset import COCO_Search18, COCO_Search18_evaluation, COCO_Search18_rl
-# from models.baseline import baseline
-# from models.baseline_egcb import baseline
-# from models.baseline_object import baseline
-# from models.baseline_attention import baseline
 from models.baseline_attention_multihead import baseline
 from models.loss import CrossEntropyLoss, DurationSmoothL1Loss, MLPRayleighDistribution, MLPLogNormalDistribution, \
     LogAction, LogDuration, NSS, CC, KLD, CC_MatchLoss, CC_terms
 from utils.checkpointing import CheckpointManager
 from utils.recording import RecordManager
-from utils.evaluation import human_evaluation, evaluation, evaluation_performance_related,\
-    pairs_multimatch_eval, pairs_eval, pairs_VAME_eval, pairs_eval_performance_related, pairs_eval_scanmatch
+from utils.evaluation import human_evaluation, evaluation, pairs_eval_scanmatch
 from utils.logger import Logger
 from opts import parse_opt
 from utils.evaltools.scanmatch import ScanMatch
-from visualization.vistools import show_sequential_action_map, show_saliency_map, show_image, show_image_and_scanpath
 from models.sampling import Sampling
 
 args = parse_opt()
@@ -79,24 +73,20 @@ def main():
     logger.info("The args corresponding to training process are: ")
     for (key, value) in vars(args).items():
         logger.info("{key:20}: {value:}".format(key=key, value=value))
-    # else:
-    #     # read hparams
-    #     with open(hparams_file, 'r') as f:
-    #         args.__dict__ = json.load(f)
 
     # --------------------------------------------------------------------------------------------
     #   INSTANTIATE VOCABULARY, DATALOADER, MODEL, OPTIMIZER
     # --------------------------------------------------------------------------------------------
 
-    train_dataset = COCO_Search18(args.img_dir, args.fix_dir, args.detector_dir, None,
+    train_dataset = COCO_Search18(args.img_dir, args.fix_dir, args.detector_dir,
                                   blur_sigma=args.blur_sigma, type="train", split="split3", transform=transform,
                                   detector_threshold=args.detector_threshold)
-    train_dataset_rl = COCO_Search18_rl(args.img_dir, args.fix_dir, args.detector_dir, None,
-                                         type="train", split="split3", transform=transform,
+    train_dataset_rl = COCO_Search18_rl(args.img_dir, args.fix_dir, args.detector_dir,
+                                        type="train", split="split3", transform=transform,
                                         detector_threshold=args.detector_threshold)
-    validation_dataset = COCO_Search18_evaluation(args.img_dir, args.fix_dir, args.detector_dir, None,
-                                         type="validation", split="split3", transform=transform,
-                                          detector_threshold=args.detector_threshold)
+    validation_dataset = COCO_Search18_evaluation(args.img_dir, args.fix_dir, args.detector_dir,
+                                                  type="validation", split="split3", transform=transform,
+                                                  detector_threshold=args.detector_threshold)
 
     train_loader = DataLoader(
         dataset=train_dataset,
@@ -120,8 +110,7 @@ def main():
         collate_fn=validation_dataset.collate_func
     )
 
-    model = baseline(embed_size=512, bert_embed_size=768,
-                     convLSTM_length=args.max_length, min_length=args.min_length).cuda()
+    model = baseline(embed_size=512, convLSTM_length=args.max_length, min_length=args.min_length).cuda()
 
     sampling = Sampling(convLSTM_length=args.max_length, min_length=args.min_length)
 
@@ -188,69 +177,24 @@ def main():
         if epoch < args.start_rl_epoch:
             model.train()
             for i_batch, batch in enumerate(train_loader):
-                # tmp = [batch["images"], batch["saliency_maps"], batch["fixation_maps"],
-                #        batch["scanpaths"], batch["durations"],
-                #        batch["action_masks"], batch["duration_masks"]]
-                # tmp = [batch["images"], batch["good_scanpaths"], batch["good_durations"],
-                #        batch["good_action_masks"], batch["good_duration_masks"], batch["good_saliency_maps"],
-                #        batch["poor_scanpaths"], batch["poor_durations"],
-                #        batch["poor_action_masks"], batch["poor_duration_masks"], batch["poor_saliency_maps"],
-                #        batch["performances"], batch["bert_Qsemantics"]]
-
                 tmp = [batch["images"], batch["scanpaths"], batch["durations"],
                        batch["action_masks"], batch["duration_masks"], batch["attention_maps"], batch["tasks"]]
                 tmp = [_ if not torch.is_tensor(_) else _.cuda() for _ in tmp]
-                # images, saliency_maps, fixation_maps, scanpaths, durations, action_masks, duration_masks = tmp
                 images, scanpaths, durations, action_masks, duration_masks, attention_maps, tasks = tmp
 
                 optimizer.zero_grad()
-                # predicts = model(images, bert_Qsemantics, good_duration_masks, poor_duration_masks)
-                #
-                # loss_good_actions = CrossEntropyLoss(predicts["good_actions"], good_scanpaths, good_action_masks)
-                # loss_good_duration = MLPLogNormalDistribution(predicts["good_log_normal_mu"],
-                #                                               predicts["good_log_normal_sigma2"],
-                #                                               good_durations, good_duration_masks)
-                # loss_poor_actions = CrossEntropyLoss(predicts["poor_actions"], poor_scanpaths, poor_action_masks)
-                # loss_poor_duration = MLPLogNormalDistribution(predicts["poor_log_normal_mu"],
-                #                                               predicts["poor_log_normal_sigma2"],
-                #                                               poor_durations, poor_duration_masks)
-                #
-                # gt_CC = CC_terms(good_saliency_maps, poor_saliency_maps, good_duration_masks, poor_duration_masks)
-                # pre_CC = CC_terms(predicts["good_saliency_map_predictions"],
-                #                   predicts["poor_saliency_map_predictions"], good_duration_masks, poor_duration_masks)
-                # loss_CC_match = CC_MatchLoss(gt_CC, pre_CC)
 
                 if args.ablate_attention_info:
                     attention_maps *= 0
 
                 predicts = model(images, attention_maps, tasks)
 
-                loss_good_actions = CrossEntropyLoss(predicts["all_actions_prob"], scanpaths, action_masks)
-                loss_good_duration = MLPLogNormalDistribution(predicts["log_normal_mu"],
-                                                              predicts["log_normal_sigma2"],
-                                                              durations, duration_masks)
-                # loss_poor_actions = CrossEntropyLoss(predicts["poor_actions"], scanpaths, action_masks)
-                # loss_poor_duration = MLPLogNormalDistribution(predicts["poor_log_normal_mu"],
-                #                                               predicts["poor_log_normal_sigma2"],
-                #                                               durations, duration_masks)
+                loss_actions = CrossEntropyLoss(predicts["all_actions_prob"], scanpaths, action_masks)
+                loss_duration = MLPLogNormalDistribution(predicts["log_normal_mu"],
+                                                         predicts["log_normal_sigma2"],
+                                                         durations, duration_masks)
 
-                # gt_CC = CC_terms(good_saliency_maps, poor_saliency_maps, good_duration_masks, poor_duration_masks)
-                # pre_CC = CC_terms(predicts["good_saliency_map_predictions"],
-                #                   predicts["poor_saliency_map_predictions"], good_duration_masks, poor_duration_masks)
-                # loss_CC_match = CC_MatchLoss(gt_CC, pre_CC)
-
-                # loss_CC1 = CC(predicts["good_saliency_map_predictions"], good_saliency_maps)
-                # loss_CC2 = CC(predicts["poor_saliency_map_predictions"], poor_saliency_maps)
-
-                # loss_NSS = NSS(predicts["saliency_map_predictions"], fixation_maps)
-                # loss_CC = CC(predicts["saliency_map_predictions"], saliency_maps)
-                # loss_KLD = KLD(predicts["saliency_map_predictions"], saliency_maps)
-                # loss = loss_actions + args.lambda_1 * loss_duration + args.lambda_2 * loss_NSS \
-                #        + args.lambda_3 * loss_CC + args.lambda_4 * loss_KLD
-                # loss = loss_good_actions + loss_poor_actions + \
-                #        args.lambda_1 * (loss_good_duration + loss_poor_duration)
-
-                loss = loss_good_actions + args.lambda_1 * loss_good_duration
+                loss = loss_actions + args.lambda_1 * loss_duration
 
                 loss.backward()
                 if args.clip > 0:
@@ -262,14 +206,8 @@ def main():
                 pbar.update(1)
                 # Log loss and learning rate to tensorboard.
                 tensorboard_writer.add_scalar("loss/loss", loss, iteration)
-                tensorboard_writer.add_scalar("loss/loss_actions", loss_good_actions, iteration)
-                tensorboard_writer.add_scalar("loss/loss_duration", loss_good_duration, iteration)
-                # tensorboard_writer.add_scalar("loss/loss_poor_actions", loss_poor_actions, iteration)
-                # tensorboard_writer.add_scalar("loss/loss_poor_duration", loss_poor_duration, iteration)
-                # tensorboard_writer.add_scalar("loss/loss_CC_match", loss_CC_match, iteration)
-                # tensorboard_writer.add_scalar("loss/loss_NSS", loss_NSS, iteration)
-                # tensorboard_writer.add_scalar("loss/loss_CC", loss_CC, iteration)
-                # tensorboard_writer.add_scalar("loss/loss_KLD", loss_KLD, iteration)
+                tensorboard_writer.add_scalar("loss/loss_actions", loss_actions, iteration)
+                tensorboard_writer.add_scalar("loss/loss_duration", loss_duration, iteration)
                 tensorboard_writer.add_scalar("learning_rate", optimizer.param_groups[0]["lr"], iteration)
         # reinforcement learning stage
         else:
@@ -278,8 +216,6 @@ def main():
             ScanMatchwithDuration = ScanMatch(Xres=320, Yres=240, Xbin=16, Ybin=12, Offset=(0, 0), TempBin=50,
                                               Threshold=3.5)
             ScanMatchwithoutDuration = ScanMatch(Xres=320, Yres=240, Xbin=16, Ybin=12, Offset=(0, 0), Threshold=3.5)
-            x_granularity = float(args.width / args.map_width)
-            y_granularity = float(args.height / args.map_height)
             for i_batch, batch in enumerate(train_rl_loader):
 
                 tmp = [batch["images"], batch["fix_vectors"], batch["attention_maps"], batch["tasks"]]
@@ -316,13 +252,8 @@ def main():
                         images, prob_sample_actions, durations, sample_actions)
                     t = durations.data.clone()
 
-                    # metrics_reward = pairs_multimatch_eval(gt_fix_vectors, random_predict_fix_vectors)
-                    # metrics_reward = pairs_VAME_eval(gt_fix_vectors, random_predict_fix_vectors)
                     metrics_reward = pairs_eval_scanmatch(gt_fix_vectors, random_predict_fix_vectors,
                                                           ScanMatchwithDuration, ScanMatchwithoutDuration)
-
-                    # metrics_reward = pairs_eval(gt_fix_vectors, random_predict_fix_vectors,
-                    #                             ScanMatchwithDuration, ScanMatchwithoutDuration)
 
                     if np.any(np.isnan(metrics_reward)):
                         continue
@@ -334,58 +265,10 @@ def main():
                         metrics_reward_batch.append(metrics_reward.unsqueeze(0))
                         neg_log_actions_batch.append(neg_log_actions.unsqueeze(0))
                         neg_log_durations_batch.append(neg_log_durations.unsqueeze(0))
-                    # if accept_flag == False:
-                    #     continue
-                    # else:
-                    #     trial += 1
-                    #     metrics_same_reward[np.isnan(metrics_same_reward)] = 0
-                    #     metrics_diff_reward[np.isnan(metrics_diff_reward)] = 0
-                    #     metrics_same_reward = torch.tensor(metrics_same_reward, dtype=torch.float32).to(images.get_device())
-                    #     metrics_diff_reward = torch.tensor(metrics_diff_reward, dtype=torch.float32).to(images.get_device())
-                    #     neg_log_actions = - LogAction(prob_sample_actions, action_masks)
-                    #     neg_log_durations = - LogDuration(t, log_normal_mu, log_normal_sigma2, duration_masks)
-                    #     metrics_same_reward_batch.append(metrics_same_reward.unsqueeze(0))
-                    #     metrics_diff_reward_batch.append(metrics_diff_reward.unsqueeze(0))
-                    #     neg_log_actions_batch.append(neg_log_actions.unsqueeze(0))
-                    #     neg_log_durations_batch.append(neg_log_durations.unsqueeze(0))
 
                 neg_log_actions_tensor = torch.cat(neg_log_actions_batch, dim=0)
                 neg_log_durations_tensor = torch.cat(neg_log_durations_batch, dim=0)
                 # use the mean as reward
-                # metrics_reward_tensor = torch.cat(metrics_reward_batch, dim=0)
-                # baseline_reward_tensor = metrics_reward_tensor.mean(0, keepdim=True)
-                # loss_actions = (neg_log_actions_tensor * (metrics_reward_tensor - baseline_reward_tensor).sum(-1)).sum()
-                # loss_duration = (
-                #             neg_log_durations_tensor * (metrics_reward_tensor - baseline_reward_tensor).sum(-1)).sum()
-                # loss = loss_actions + loss_duration
-                # use the hmean as reward
-                # metrics_same_reward_tensor = torch.cat(metrics_same_reward_batch, dim=0)
-                # metrics_diff_reward_tensor = torch.cat(metrics_diff_reward_batch, dim=0)
-                # metrics_same_reward_hmean = scipy.stats.hmean(metrics_same_reward_tensor[:, :, 5:7].cpu(), axis=-1)
-                # metrics_diff_reward_hmean = scipy.stats.hmean(metrics_diff_reward_tensor[:, :, 5:7].cpu(), axis=-1)
-                # metrics_same_reward_hmean_tensor = torch.tensor(metrics_same_reward_hmean)\
-                #     .to(metrics_same_reward_tensor.get_device())
-                # metrics_diff_reward_hmean_tensor = torch.tensor(metrics_diff_reward_hmean) \
-                #     .to(metrics_diff_reward_tensor.get_device())
-                # # baseline_same_reward_hmean_tensor = metrics_same_reward_hmean_tensor.mean(0, keepdim=True)
-                # # baseline_diff_reward_hmean_tensor = metrics_diff_reward_hmean_tensor.mean(0, keepdim=True)
-                # baseline_same_reward_hmean_tensor = metrics_same_reward_hmean_tensor.view(2, -1, N).\
-                #     mean(1, keepdim=True).expand((2, args.rl_sample_number, N)).contiguous().view(-1, N)
-                # baseline_diff_reward_hmean_tensor = metrics_diff_reward_hmean_tensor.view(2, -1, N). \
-                #     mean(1, keepdim=True).expand((2, args.rl_sample_number, N)).contiguous().view(-1, N)
-
-                # loss_actions = (neg_log_actions_tensor *
-                #                 (metrics_same_reward_hmean_tensor - baseline_same_reward_hmean_tensor)).sum()
-                # + args.lambda_5 * (neg_log_actions_tensor *
-                #                    (metrics_diff_reward_hmean_tensor - baseline_diff_reward_hmean_tensor)).sum()
-                #
-                # loss_duration = (neg_log_durations_tensor *
-                #                  (metrics_same_reward_hmean_tensor - baseline_same_reward_hmean_tensor)).sum()
-                # + args.lambda_5 * (neg_log_durations_tensor *
-                #                    (metrics_diff_reward_hmean_tensor - baseline_diff_reward_hmean_tensor)).sum()
-                #
-                # loss = loss_actions + loss_duration
-
                 metrics_reward_tensor = torch.cat(metrics_reward_batch, dim=0)
                 metrics_reward_hmean = scipy.stats.hmean(metrics_reward_tensor[:, :, :].cpu(), axis=-1)
                 metrics_reward_hmean_tensor = torch.tensor(metrics_reward_hmean).to(metrics_reward_tensor.get_device())
@@ -403,27 +286,6 @@ def main():
                 iteration += 1
                 lr_scheduler.step()
                 pbar.update(1)
-                # # Log loss and learning rate to tensorboard.
-                # multimatch_metric_names = ["vector", "direction", "length", "position", "duration",
-                #                            "w/o duration", "w/ duration", "SED mean",
-                #                            "STDE mean", "SED best", "STDE best"]
-                # multimatch_same_metrics_reward = metrics_same_reward_tensor.mean(0).mean(0)
-                # multimatch_diff_metrics_reward = metrics_diff_reward_tensor.mean(0).mean(0)
-                # tensorboard_writer.add_scalar("rl_loss", loss, iteration)
-                # tensorboard_writer.add_scalar("reward_same_hmean",
-                #                               metrics_same_reward_hmean[metrics_same_reward_hmean > 0].mean(), iteration)
-                # tensorboard_writer.add_scalar("reward_diff_hmean",
-                #                               metrics_diff_reward_hmean[metrics_diff_reward_hmean > 0].mean(), iteration)
-                # tensorboard_writer.add_scalar("learning_rate", optimizer.param_groups[0]["lr"], iteration)
-                # for metric_index in range(len(multimatch_metric_names)):
-                #     tensorboard_writer.add_scalar(
-                #         "metrics_for_same_reward/{metric_name}".format(metric_name=multimatch_metric_names[metric_index]),
-                #         multimatch_same_metrics_reward[metric_index], iteration
-                #     )
-                #     tensorboard_writer.add_scalar(
-                #         "metrics_for_diff_reward/{metric_name}".format(metric_name=multimatch_metric_names[metric_index]),
-                #         multimatch_diff_metrics_reward[metric_index], iteration
-                #     )
                 # Log loss and learning rate to tensorboard.
                 multimatch_metric_names = ["w/o duration", "w/ duration"]
                 multimatch_metrics_reward = metrics_reward_tensor.mean(0).mean(0)
@@ -490,27 +352,18 @@ def main():
 
 
     # get the human baseline score
-    # human_metrics, human_metrics_std, _ = human_evaluation(validation_loader)
-    # logger.info("The metrics for human performance are: ")
-    # for metrics_key in human_metrics.keys():
-    #     for (key, value) in human_metrics[metrics_key].items():
-    #         logger.info("{metrics_key:10}-{key:15}: {value:.4f} +- {std:.4f}".format
-    #                     (metrics_key=metrics_key, key=key, value=value, std=human_metrics_std[metrics_key][key]))
+    human_metrics, human_metrics_std, _ = human_evaluation(validation_loader)
+    logger.info("The metrics for human performance are: ")
+    for metrics_key in human_metrics.keys():
+        for (key, value) in human_metrics[metrics_key].items():
+            logger.info("{metrics_key:10}-{key:15}: {value:.4f} +- {std:.4f}".format
+                        (metrics_key=metrics_key, key=key, value=value, std=human_metrics_std[metrics_key][key]))
 
-    # for i_batch, batch in enumerate(validation_loader):
-        # show_index = 0
-        # # show_image(batch["images"][show_index])
-        # fix = batch["fix_vectors"][show_index][0]
-        # x = fix["start_x"]
-        # y = fix["start_y"]
-        # show_image_and_scanpath(batch["images"][show_index], x, y)
-        # pass
 
     tqdm_total = len(train_loader) * args.start_rl_epoch + len(train_rl_loader) * (args.epoch - args.start_rl_epoch)
     with tqdm(total=tqdm_total, initial=iteration + 1) as pbar:
         for epoch in range(start_epoch + 1, args.epoch):
             iteration = train(iteration, epoch)
-            checkpoint_manager.step(float(0))
             cur_metrics = validation(iteration)
             cur_metric = scipy.stats.hmean(list(cur_metrics["ScanMatch"].values()))
 

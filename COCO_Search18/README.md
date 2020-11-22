@@ -28,7 +28,7 @@ Training your own network on COCO Search18 dataset
 We have set all the corresponding hyper-parameters in ``opt.py``. Hence you can directly execute the following command to train the network.
 
 ```bash
-$ CUDA_VISIBLE_DEVICES=0, 1 python train.py
+$ CUDA_VISIBLE_DEVICES=0,1 python train.py
 ```
 
 ## Evaluate on validation split
@@ -38,6 +38,6 @@ Since the author of COCO Search18 only releases the training and validation data
 We provide the [`pretrained model`](https://drive.google.com/file/d/1NtRD08WRTTLIpfPziImUBRqJzFMX4cH6/view?usp=sharing), or you can use your own trained network to evaluate the performance on validation split.
 
 ```bash
-$ CUDA_VISIBLE_DEVICES=0, 1 python test.py --evaluation_dir "./assets/pretrained_model"
+$ CUDA_VISIBLE_DEVICES=0,1 python test.py --evaluation_dir "./assets/pretrained_model"
 ```
 

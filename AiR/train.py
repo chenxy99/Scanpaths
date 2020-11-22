@@ -23,13 +23,11 @@ from models.loss import CrossEntropyLoss, DurationSmoothL1Loss, MLPRayleighDistr
     KLD_question_aligment
 from utils.checkpointing import CheckpointManager
 from utils.recording import RecordManager
-from utils.evaluation import human_evaluation, evaluation, evaluation_performance_related,\
-    pairs_multimatch_eval, pairs_eval, pairs_VAME_eval, pairs_eval_performance_related, \
+from utils.evaluation import human_evaluation, evaluation_performance_related,\
     pairs_eval_scanmatch_performance_related, gtpairs_eval_scanmatch_performance_related
 from utils.logger import Logger
 from opts import parse_opt
 from utils.evaltools.scanmatch import ScanMatch
-from visualization.vistools import show_sequential_action_map, show_saliency_map, show_image, show_image_and_scanpath
 from models.sampling import Sampling
 
 args = parse_opt()
@@ -77,20 +75,16 @@ def main():
     logger.info("The args corresponding to training process are: ")
     for (key, value) in vars(args).items():
         logger.info("{key:20}: {value:}".format(key=key, value=value))
-    # else:
-    #     # read hparams
-    #     with open(hparams_file, 'r') as f:
-    #         args.__dict__ = json.load(f)
 
     # --------------------------------------------------------------------------------------------
     #   INSTANTIATE VOCABULARY, DATALOADER, MODEL, OPTIMIZER
     # --------------------------------------------------------------------------------------------
 
-    train_dataset = AiR(args.img_dir, args.fix_dir, args.att_dir, args.bert_pretrained_dir,
+    train_dataset = AiR(args.img_dir, args.fix_dir, args.att_dir,
                          blur_sigma=args.blur_sigma, type="train", transform=transform)
-    train_dataset_rl = AiR_rl(args.img_dir, args.fix_dir, args.att_dir, args.bert_pretrained_dir,
+    train_dataset_rl = AiR_rl(args.img_dir, args.fix_dir, args.att_dir,
                               type="train", transform=transform)
-    validation_dataset = AiR_evaluation(args.img_dir, args.fix_dir, args.att_dir, args.bert_pretrained_dir,
+    validation_dataset = AiR_evaluation(args.img_dir, args.fix_dir, args.att_dir,
                                          type="validation", transform=transform)
     train_loader = DataLoader(
         dataset=train_dataset,
@@ -114,8 +108,7 @@ def main():
         collate_fn=validation_dataset.collate_func
     )
 
-    model = baseline(embed_size=512, bert_embed_size=768,
-                     convLSTM_length=args.max_length, min_length=args.min_length).cuda()
+    model = baseline(embed_size=512, convLSTM_length=args.max_length, min_length=args.min_length).cuda()
 
     sampling = Sampling(convLSTM_length=args.max_length, min_length=args.min_length)
 
@@ -183,21 +176,18 @@ def main():
             model.train()
             for i_batch, batch in enumerate(train_loader):
                 tmp = [batch["images"], batch["scanpaths"], batch["durations"],
-                       batch["action_masks"], batch["duration_masks"],
-                       batch["projected_labels"], batch["attention_maps"],
-                       batch["performances"], batch["bert_Qsemantics"]]
+                       batch["action_masks"], batch["duration_masks"], batch["attention_maps"],
+                       batch["performances"]]
                 tmp = [_ if not torch.is_tensor(_) else _.cuda() for _ in tmp]
-                # images, saliency_maps, fixation_maps, scanpaths, durations, action_masks, duration_masks = tmp
                 images, scanpaths, durations, action_masks, \
-                duration_masks, projected_labels, attention_maps,\
-                perfromances, bert_Qsemantics = tmp
+                duration_masks, attention_maps, perfromances = tmp
 
                 if args.ablate_attention_info:
                     attention_maps *= 0
 
                 optimizer.zero_grad()
 
-                predicts = model(images, bert_Qsemantics, projected_labels, attention_maps, perfromances)
+                predicts = model(images, attention_maps, perfromances)
 
                 loss_actions = CrossEntropyLoss(predicts["all_actions_prob"], scanpaths, action_masks)
                 loss_duration = MLPLogNormalDistribution(predicts["log_normal_mu"],
@@ -226,14 +216,11 @@ def main():
             ScanMatchwithDuration = ScanMatch(Xres=320, Yres=240, Xbin=16, Ybin=12, Offset=(0, 0), TempBin=50,
                                               Threshold=3.5)
             ScanMatchwithoutDuration = ScanMatch(Xres=320, Yres=240, Xbin=16, Ybin=12, Offset=(0, 0), Threshold=3.5)
-            x_granularity = float(args.width / args.map_width)
-            y_granularity = float(args.height / args.map_height)
             for i_batch, batch in enumerate(train_rl_loader):
 
-                tmp = [batch["images"], batch["fix_vectors"], batch["performances"], batch["projected_labels"],
-                       batch["attention_maps"], batch["bert_Qsemantics"]]
+                tmp = [batch["images"], batch["fix_vectors"], batch["performances"], batch["attention_maps"]]
                 tmp = [_ if not torch.is_tensor(_) else _.cuda() for _ in tmp]
-                images, gt_fix_vectors, performances, projected_labels, attention_maps, bert_Qsemantics = tmp
+                images, gt_fix_vectors, performances, attention_maps = tmp
                 N, C, H, W = images.shape
                 given_performance = [True] * args.rl_sample_number + [False] * args.rl_sample_number
 
@@ -252,7 +239,7 @@ def main():
                 neg_log_durations_batch = []
 
                 # get the random sample prediction
-                predict = model(images, bert_Qsemantics, projected_labels, attention_maps)
+                predict = model(images, attention_maps)
                 good_log_normal_mu = predict["good_log_normal_mu"]
                 good_log_normal_sigma2 = predict["good_log_normal_sigma2"]
                 good_all_actions_prob = predict["good_all_actions_prob"]
@@ -261,7 +248,6 @@ def main():
                 poor_all_actions_prob = predict["poor_all_actions_prob"]
 
                 trial = 0
-                # total_trial = 0
                 while True:
                     if trial >= 2 * args.rl_sample_number:
                         break
@@ -394,20 +380,16 @@ def main():
         all_allocated_performances = []
         with tqdm(total=len(validation_loader) * repeat_num) as pbar_val:
             for i_batch, batch in enumerate(validation_loader):
-                tmp = [batch["images"], batch["fix_vectors"], batch["performances"], batch["projected_labels"],
-                       batch["attention_maps"], batch["bert_Qsemantics"]]
+                tmp = [batch["images"], batch["fix_vectors"], batch["performances"], batch["attention_maps"]]
                 tmp = [_ if not torch.is_tensor(_) else _.cuda() for _ in tmp]
-                images, gt_fix_vectors, performances, projected_labels, attention_maps, bert_Qsemantics = tmp
+                images, gt_fix_vectors, performances, attention_maps = tmp
                 N, C, H, W = images.shape
-                # given_performance = [True] * args.eval_repeat_num + [False] * args.eval_repeat_num
-                # given_performance = [True, False] * args.eval_repeat_num
 
                 if args.ablate_attention_info:
                     attention_maps *= 0
 
-                # all_allocated_performances.extend([given_performance])
                 with torch.no_grad():
-                    predict = model(images, bert_Qsemantics, projected_labels, attention_maps)
+                    predict = model(images, attention_maps)
 
                 good_log_normal_mu = predict["good_log_normal_mu"]
                 good_log_normal_sigma2 = predict["good_log_normal_sigma2"]
@@ -467,21 +449,20 @@ def main():
 
 
     # get the human baseline score
-    # human_metrics, human_metrics_std = human_evaluation(validation_loader)
-    # logger.info("The metrics for human performance are: ")
-    # for category_key in human_metrics.keys():
-    #     for metrics_key in human_metrics[category_key].keys():
-    #         for (key, value) in human_metrics[category_key][metrics_key].items():
-    #             logger.info("{category_key:12}: {metrics_key:10}-{key:15}: {value:.4f} +- {std:.4f}".format
-    #                         (category_key=category_key, metrics_key=metrics_key, key=key, value=value,
-    #                          std=human_metrics_std[category_key][metrics_key][key]))
-    #     logger.info("-" * 40)
+    human_metrics, human_metrics_std, _ = human_evaluation(validation_loader)
+    logger.info("The metrics for human performance are: ")
+    for category_key in human_metrics.keys():
+        for metrics_key in human_metrics[category_key].keys():
+            for (key, value) in human_metrics[category_key][metrics_key].items():
+                logger.info("{category_key:12}: {metrics_key:10}-{key:15}: {value:.4f} +- {std:.4f}".format
+                            (category_key=category_key, metrics_key=metrics_key, key=key, value=value,
+                             std=human_metrics_std[category_key][metrics_key][key]))
+        logger.info("-" * 40)
 
     tqdm_total = len(train_loader) * args.start_rl_epoch + len(train_rl_loader) * (args.epoch - args.start_rl_epoch)
     with tqdm(total=tqdm_total, initial=iteration + 1) as pbar:
         for epoch in range(start_epoch + 1, args.epoch):
             iteration = train(iteration, epoch)
-            # checkpoint_manager.step(float(0))
             cur_metrics = validation(iteration)
             cur_metric = scipy.stats.hmean(list(cur_metrics["right_answer"]["ScanMatch"].values()) +
                                            list(cur_metrics["wrong_answer"]["ScanMatch"].values()))

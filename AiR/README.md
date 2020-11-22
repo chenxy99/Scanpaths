@@ -31,7 +31,7 @@ Training your own network on AiR dataset
 We have set all the corresponding hyper-parameters in ``opt.py``. Hence you can directly execute the following command to train the network.
 
 ```bash
-$ CUDA_VISIBLE_DEVICES=0, 1 python train.py
+$ CUDA_VISIBLE_DEVICES=0,1 python train.py
 ```
 
 ## Evaluate on test split
@@ -39,6 +39,6 @@ $ CUDA_VISIBLE_DEVICES=0, 1 python train.py
 We also provide the [`pretrained model`](https://drive.google.com/file/d/1rvQwMW83g1lZOpWYy-8Iis_qrYQr3sbO/view?usp=sharing), or you can use your own trained network to evaluate the performance on test split.
 
 ```bash
-$ CUDA_VISIBLE_DEVICES=0, 1 python test.py --evaluation_dir "./assets/pretrained_model"
+$ CUDA_VISIBLE_DEVICES=0,1 python test.py --evaluation_dir "./assets/pretrained_model"
 ```
 

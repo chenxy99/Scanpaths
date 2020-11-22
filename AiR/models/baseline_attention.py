@@ -185,18 +185,16 @@ class predict_head(nn.Module):
                 normal_init(m, std=0.01)
 
 class baseline(nn.Module):
-    def __init__(self, embed_size=512, bert_embed_size=768, convLSTM_length=16, min_length=3, ratio=4,
-                  map_width=40, map_height=30, projected_label_length=18):
+    def __init__(self, embed_size=512, convLSTM_length=16, min_length=1, ratio=4,
+                  map_width=40, map_height=30):
         super(baseline, self).__init__()
         self.embed_size = embed_size
-        self.bert_embed_size = bert_embed_size
         self.ratio = ratio
         self.convLSTM_length = convLSTM_length
         self.min_length = min_length
         self.downsampling_rate = 8
         self.map_width = map_width
         self.map_height = map_height
-        self.projected_label_length = projected_label_length
         self.performance_situation = ["False", "True"]
         self.int2performance = {i: self.performance_situation[i] for i in range(len(self.performance_situation))}
 
@@ -252,21 +250,19 @@ class baseline(nn.Module):
         return semantic_feature
 
 
-    def forward(self, images, bert_Qsemantics, projected_labels, attention_maps, performances=None):
+    def forward(self, images, attention_maps, performances=None):
         # scanpath is used for the extract embedding feature to the ConvLSTM modules  (We do not use it at this model)
         # durations is used in the ConvLSTM modules (We do not use it at this model)
         # active_scanpath_temporal_masks is used for training the saliency map and obtained from duration_masks
 
         if self.training:
-            predicts = self.training_process(images, bert_Qsemantics, projected_labels, attention_maps, performances)
+            predicts = self.training_process(images, attention_maps, performances)
         else:
-            predicts = self.inference(images, bert_Qsemantics, projected_labels, attention_maps)
+            predicts = self.inference(images, attention_maps)
 
         return predicts
 
-    def training_process(self, images, bert_Qsemantics, projected_labels, attention_maps, performances):
-        bert_Qsemantics = bert_Qsemantics.unsqueeze(-1).unsqueeze(-1)
-
+    def training_process(self, images, attention_maps, performances):
         # img = img.unsqueeze(0)
         batch, _, height, width = images.size()# build a one-hot performance embedding
 
@@ -386,9 +382,7 @@ class baseline(nn.Module):
         predicts['log_normal_sigma2'] = predict_head_rlts["log_normal_sigma2"]
         return predicts
 
-    def inference(self, images, bert_Qsemantics, projected_labels, attention_maps):
-        bert_Qsemantics = bert_Qsemantics.unsqueeze(-1).unsqueeze(-1)
-
+    def inference(self, images, attention_maps):
         # img = img.unsqueeze(0)
         batch, _, height, width = images.size()  # build a one-hot performance embedding
 
@@ -478,7 +472,6 @@ class baseline(nn.Module):
             save_predict["action_map"] = torch.cat(action_map_pools, axis=1)
 
 
-
         predicts = {}
         # [N, T, A] A = H * W + 1
         predicts["good_all_actions_prob"] = good_predict["actions"]
@@ -502,7 +495,6 @@ class baseline(nn.Module):
     def init_weights(self):
         for modules in [self.sal_conv.modules(), self.performance_sal_layer.modules(),
                         self.semantic_embed.modules(), self.spatial_embed.modules()]:
-                        # self.transform_context_info.modules(), self.transform_language_info.modules()]:
             for m in modules:
                 if isinstance(m, nn.Conv2d):
                     xavier_init(m)

@@ -4,7 +4,7 @@ This code implements the prediction of human scanpaths in visual search task.
 
 Datasets
 ------------------
-You can download the original data followed the [`COCO-Search18`](https://sites.google.com/view/cocosearch/home) guidance. The trainval split and the bounding box annotations for our implementation and original implementation of inverse reinforcement learning can be download from  [`link`](https://drive.google.com/drive/folders/1spD2_Eya5S5zOBO3NKILlAjMEC3_gKWc) (more detail can refer to the original [`official released code`](https://github.com/cvlab-stonybrook/Scanpath_Prediction)). For the trainval split files, you need to add `_split3` at the end of each file. We pre-process the object detector result by [`CenterNet`](https://github.com/xingyizhou/CenterNet) and you can download it from [`link`](https://drive.google.com/file/d/1f_Ha5ppPKCngARg7_W5AlqvP6Q_N8LRu/view?usp=sharing).
+You can download the original data followed the [`COCO-Search18`](https://sites.google.com/view/cocosearch/home) guidance. The trainval split and the bounding box annotations for our implementation and original implementation of inverse reinforcement learning can be download from  [`link`](https://drive.google.com/drive/folders/1spD2_Eya5S5zOBO3NKILlAjMEC3_gKWc) (more detail can refer to the original [`official released code`](https://github.com/cvlab-stonybrook/Scanpath_Prediction)). For the trainval split files, you need to add `_split3` at the end of each file. We pre-process the object detector result by [`CenterNet`](https://github.com/xingyizhou/CenterNet) and alternatively you can download it from [`link`](https://drive.google.com/file/d/1f_Ha5ppPKCngARg7_W5AlqvP6Q_N8LRu/view?usp=sharing).
 
 The typical `<dataset_root>` should be structured as follows
 ```
@@ -35,7 +35,7 @@ $ CUDA_VISIBLE_DEVICES=0, 1 python train.py
 
 Since the author of COCO Search18 only releases the training and validation data, we can only evaluate the performance on the validation split.
 
-We provide the [`pretrained model`](https://drive.google.com/file/d/1NtRD08WRTTLIpfPziImUBRqJzFMX4cH6/view?usp=sharing), or you can use you own trained network to evaluate the performance on validation split.
+We provide the [`pretrained model`](https://drive.google.com/file/d/1NtRD08WRTTLIpfPziImUBRqJzFMX4cH6/view?usp=sharing), or you can use your own trained network to evaluate the performance on validation split.
 
 ```bash
 $ CUDA_VISIBLE_DEVICES=0, 1 python test.py --evaluation_dir "./assets/pretrained_model"

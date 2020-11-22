@@ -10,16 +10,16 @@ The typical `<dataset_root>` should be structured as follows
 ```
 <dataset_root>
 	-- ./detectors
-		-- coco_search18_detector.json				# bounding box annotation from an object detector
+		-- coco_search18_detector.json              # bounding box annotation from an object detector
 	-- ./fixations
 		coco_search18_fixations_TP_train_split3.json
 		coco_search18_fixations_TP_validation_split3.json
-	-- ./images										# image stimuli
+	-- ./images                                     # image stimuli
 		-- ./bottle
 		-- ./bowl
 		-- ......
 		-- ./tv
-    -- bbox_annos.npy								# bounding box annotation for each image (available at COCO)
+    -- bbox_annos.npy                               # bounding box annotation for each image (available at COCO)
 ```
 
 

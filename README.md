@@ -32,9 +32,9 @@ Tasks
 
 We provide the corresponding codes for the mentioned three different tasks.
 
-- Visual Question Answering (AiR)
-- Free-viewing (OSIE)
+- Visual Question Answering (AiR dataset)
+- Free-viewing (OSIE dataset)
 
-- Visual search (COCO_Search18)
+- Visual search (COCO-Search18 dataset)
 
 More details can refer to the corresponding documents.

@@ -11,7 +11,7 @@ The typical `<dataset_root>` should be structured as follows
 <dataset_root>
     -- ./detectors
         -- coco_search18_detector.json              # bounding box annotation from an object detector
-    -- ./fixations
+    -- ./fixations                                  # fixation and the training and validation splits
         coco_search18_fixations_TP_train_split3.json
         coco_search18_fixations_TP_validation_split3.json
     -- ./images                                     # image stimuli
@@ -21,11 +21,6 @@ The typical `<dataset_root>` should be structured as follows
         -- ./tv
     -- bbox_annos.npy                               # bounding box annotation for each image (available at COCO)
 ```
-
-
-
-One can follow the instructions in [data/README.md](data/README.md) to create the corresponding data. More specifically, we download the preprocessed file or preextracted features from [link](https://drive.google.com/drive/folders/1eCdz62FAVCGogOuNhy87Nmlo5_I0sH2J).
-You need to download as least the following files, unzip them and put them in the `data` folder.
 
 Training your own network on COCO Search18 dataset
 ------------------
@@ -40,7 +35,7 @@ $ CUDA_VISIBLE_DEVICES=0, 1 python train.py
 
 Since the author of COCO Search18 only releases the training and validation data, we can only evaluate the performance on the validation split.
 
-We provide the pretrained model in XXX, or you can use you own trained network to evaluate the performance on validation split.
+We provide the [`pretrained model`](https://drive.google.com/file/d/1NtRD08WRTTLIpfPziImUBRqJzFMX4cH6/view?usp=sharing), or you can use you own trained network to evaluate the performance on validation split.
 
 ```bash
 $ CUDA_VISIBLE_DEVICES=0, 1 python test.py --evaluation_dir "./assets/pretrained_model"

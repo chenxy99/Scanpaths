@@ -1,6 +1,10 @@
 # Predicting Human Scanpaths in Visual Question Answering
 
-This code implements the prediction of human scanpaths in three different tasks (visual question answering task, free-viewing task and visual search task).
+This code implements the prediction of human scanpaths in three different tasks:
+
+- Visual Question Answering:  the first prediction of scanpath during performing general task, e.g., visual question answering,
+- Free-viewing: the prediction of scanpath for looking at some salient object in the given image,
+- Visual search: the prediction of scanpath during the search of the given target object.
 
 Reference
 ------------------
@@ -37,4 +41,4 @@ We provide the corresponding codes for the mentioned three different tasks.
 
 - Visual search (COCO-Search18 dataset)
 
-More details can refer to the corresponding documents.
+We would provide more details for these tasks in the their corresponding documents.

@@ -2,9 +2,9 @@
 
 This code implements the prediction of human scanpaths in three different tasks:
 
-- Visual Question Answering:  the first prediction of scanpath during performing general task, e.g., visual question answering,
-- Free-viewing: the prediction of scanpath for looking at some salient object in the given image,
-- Visual search: the prediction of scanpath during the search of the given target object.
+- Visual Question Answering:  the prediction of scanpath during human performing general task, e.g., visual question answering, to reflect their attending and reasoning processes.
+- Free-viewing: the prediction of scanpath for looking at some salient or important object in the given image,
+- Visual search: the prediction of scanpath during the search of the given target object to reflect the goal-directed behavior.
 
 Reference
 ------------------
@@ -34,7 +34,7 @@ to create the same environment where we successfully run our codes.
 Tasks
 ------------------
 
-We provide the corresponding codes for the mentioned three different tasks.
+We provide the corresponding codes for the aforementioned three different tasks on three different dataset.
 
 - Visual Question Answering (AiR dataset)
 - Free-viewing (OSIE dataset)

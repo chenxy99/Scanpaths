@@ -15,7 +15,7 @@ Anonymous submission for CVPR 2021, paper ID 443.
 
 Disclaimer
 ------------------
-For the ScanMatch evaluation metric, we adopt the part of [`GazeParser`](http://gazeparser.sourceforge.net/) package.  We adopt the implementation of SED and STDE from [`VAME`](https://github.com/dariozanca/VAME) as two of our evaluation metrics in the [`Visual Attention Models`](https://ieeexplore.ieee.org/document/9207438). Based on the [`checkpoint`](https://github.com/nocaps-org/updown-baseline/blob/master/updown/utils/checkpointing.py) implementation from [`updown-baseline`](https://github.com/nocaps-org/updown-baseline), we slightly modify it to accommodate in our pipeline.
+For the ScanMatch evaluation metric, we adopt the part of [`GazeParser`](http://gazeparser.sourceforge.net/) package.  We adopt the implementation of SED and STDE from [`VAME`](https://github.com/dariozanca/VAME) as two of our evaluation metrics mentioned in the [`Visual Attention Models`](https://ieeexplore.ieee.org/document/9207438). Based on the [`checkpoint`](https://github.com/nocaps-org/updown-baseline/blob/master/updown/utils/checkpointing.py) implementation from [`updown-baseline`](https://github.com/nocaps-org/updown-baseline), we slightly modify it to accommodate in our pipeline.
 
 Requirements
 ------------------
@@ -34,11 +34,11 @@ to create the same environment where we successfully run our codes.
 Tasks
 ------------------
 
-We provide the corresponding codes for the aforementioned three different tasks on three different dataset.
+We provide the corresponding codes for the aforementioned three different tasks on three different datasets.
 
 - Visual Question Answering (AiR dataset)
 - Free-viewing (OSIE dataset)
 
 - Visual search (COCO-Search18 dataset)
 
-We would provide more details for these tasks in the their corresponding documents.
+We would provide more details for these tasks in the their corresponding folders.

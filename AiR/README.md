@@ -5,7 +5,7 @@ This code implements the prediction of human scanpaths in visual question answer
 Datasets
 ------------------
 
-This dataset is mainly based on [`AiR: Attention with Reasoning Capability`](https://www-users.cs.umn.edu/~qzhao/air.html) as well as [`GQA`](https://cs.stanford.edu/people/dorarad/gqa/download.html). You can download the above dataset from the provided links. Then you can get the splits of this dataset by execution of the following command 
+This dataset is mainly based on [`AiR: Attention with Reasoning Capability`](https://www-users.cs.umn.edu/~qzhao/air.html) as well as [`GQA`](https://cs.stanford.edu/people/dorarad/gqa/download.html). You can download the above dataset from the provided links. Then you can get the splits of this dataset by the execution of the following command 
 
 ```bash
 $ python ./preprocess/preprocess_fixations.py
@@ -30,19 +30,19 @@ Training your own network on AiR dataset
 
 We have set all the corresponding hyper-parameters in ``opt.py``. 
 
-The `train.py` script will dump checkpoints into the folder specified by `--log_root` (default = `./assets/`). You can set the other hyper-parameters in `opt.py`.
+The `train.py` script will dump checkpoints into the folder specified by `--log_root` (default = `./assets/`). You can also set the other hyper-parameters in `opt.py`.
 
 - `--img_dir` Directory to the image data (stimuli), e.g., `<dataset_root>/stimuli`.
 - `--fix_dir` Directory to the raw fixations, e.g., `<dataset_root>/fixations`.
 - `--att_dir` Directory to the attention maps, e.g., `<dataset_root>/attention_reasoning`.
 - `--epoch` The number of total epochs.
-- `--start_rl_epoch` Start to use reinforcement learning when reach this given epoch.
+- `--start_rl_epoch` Start to use reinforcement learning when reaching this given epoch.
 - `--lambda_1` The hyper-parameter to balance the loss terms in supervised learning stage.
-- `--lambda_5` The hyper-parameter to control the contribution of the Consistency-Divergence loss. For the propose of ablation study of Consistency-Divergence loss, you can directly set it `0` to ablate the  Consistency-Divergence loss.
+- `--lambda_5` The hyper-parameter to control the contribution of the Consistency-Divergence loss. For the propose of ablation study of Consistency-Divergence loss, you can directly set it as`0` to ablate the Consistency-Divergence loss.
 - `--ablate_attention_info` To choose whether to use the task guidance or not. The default parameter is `False`. If you like to ablate the task guidance, you can set it as `True`.
-- `--supervised_save` The default parameter is `True`. It can save a whole checkpoint before we start to use reinforcement learning. The saved checkpoint can be treated as an ablation study of self-critical sequential training. We would add `_supervised_save` as a suffix for the checkpoint document.
+- `--supervised_save` The default parameter is `True`. It can save a whole checkpoint before we start to use reinforcement learning to train our model. The saved checkpoint can be treated as an ablation study of self-critical sequential training. We would add `_supervised_save` as a suffix for the checkpoint document.
 
-In the default setting, you can directly run the following command which including our proposed task guidance, self-critical sequential training and Consistency-Divergence loss.
+In the default setting, you can directly run the following command which includes our proposed task guidance, self-critical sequential training and Consistency-Divergence loss.
 
 ```bash
 $ CUDA_VISIBLE_DEVICES=0,1 python train.py
@@ -60,7 +60,7 @@ If you would like to ablate the Consistency-Divergence loss, please run the foll
 $ CUDA_VISIBLE_DEVICES=0,1 python train.py --lambda_5 0
 ```
 
-If you would like to ablate the self-critical sequential training, you can directly find the corresponding checkpoint document with a suffix `_supervised_save`.
+If you would like to ablate the self-critical sequential training, you can directly find the corresponding checkpoint folders with a suffix `_supervised_save`.
 
 ## Evaluate on test split
 

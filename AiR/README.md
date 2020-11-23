@@ -93,6 +93,6 @@ $ CUDA_VISIBLE_DEVICES=0,1 python test.py --evaluation_dir <your_checkpoint>
 If you would like to evaluate the ablation of self-critical sequential training, you can run the following command.
 
 ```bash
-$ CUDA_VISIBLE_DEVICES=0,1 python test.py --evaluation_dir <your_checkpoint + `_supervised_save`>
+$ CUDA_VISIBLE_DEVICES=0,1 python test.py --evaluation_dir <your_checkpoint + '_supervised_save'>
 ```
 

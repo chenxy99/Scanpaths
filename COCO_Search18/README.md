@@ -25,19 +25,61 @@ The typical `<dataset_root>` should be structured as follows
 Training your own network on COCO Search18 dataset
 ------------------
 
-We have set all the corresponding hyper-parameters in ``opt.py``. Hence you can directly execute the following command to train the network.
+We have set all the corresponding hyper-parameters in ``opt.py``. 
+
+The `train.py` script will dump checkpoints into the folder specified by `--log_root` (default = `./assets/`). You can also set the other hyper-parameters in `opt.py`.
+
+- `--img_dir` Directory to the image data (stimuli), e.g., `<dataset_root>/stimuli`.
+- `--fix_dir` Directory to the raw fixations, e.g., `<dataset_root>/fixations`.
+- `--detector_dir` Directory to the detector results, e.g., `<dataset_root>/fixations`.
+- `--epoch` The number of total epochs.
+- `--start_rl_epoch` Start to use reinforcement learning when reaching this given epoch.
+- `--lambda_1` The hyper-parameter to balance the loss terms in supervised learning stage.
+- `--ablate_attention_info` To choose whether to use the task guidance or not. The default parameter is `False`. If you like to ablate the task guidance, you can set it as `True`.
+- `--detector_threshold` We would only use the detection results whose confidence is larger than the given `detector_threshold`.
+- `--supervised_save` The default parameter is `True`. It can save a whole checkpoint before we start to use reinforcement learning to train our model. The saved checkpoint can be treated as an ablation study of self-critical sequential training. We would add `_supervised_save` as a suffix for the checkpoint document.
+
+In the default setting, you can directly run the following command which includes our proposed task guidance and self-critical sequential training.
 
 ```bash
 $ CUDA_VISIBLE_DEVICES=0,1 python train.py
 ```
 
+If you would like to ablate the task guidance, please run the following command.
+
+```bash
+$ CUDA_VISIBLE_DEVICES=0,1 python train.py --ablate_attention_info True
+```
+
+If you would like to ablate the self-critical sequential training, you can directly find the corresponding checkpoint folders with a suffix `_supervised_save`.
+
 ## Evaluate on validation split
 
 Since the author of COCO Search18 only releases the training and validation data, we can only evaluate the performance on the validation split.
 
-We provide the [`pretrained model`](https://drive.google.com/file/d/1NtRD08WRTTLIpfPziImUBRqJzFMX4cH6/view?usp=sharing), or you can use your own trained network to evaluate the performance on validation split.
+We provide the [`pretrained model`](https://drive.google.com/file/d/1NtRD08WRTTLIpfPziImUBRqJzFMX4cH6/view?usp=sharing), and you can directly run the following command to evaluate the performance of pretrained model on validation split.
 
 ```bash
 $ CUDA_VISIBLE_DEVICES=0,1 python test.py --evaluation_dir "./assets/pretrained_model"
+```
+
+You can also use the commands mentioned in **Training your own network on COCO Search18 dataset** to train your own network. Then you can run one of the following commands to evaluate the performance of your trained model on validation split.
+
+If you use our default setting, you can run the following command.
+
+```bash
+$ CUDA_VISIBLE_DEVICES=0,1 python test.py --evaluation_dir <your_checkpoint>
+```
+
+If you ablate the task guidance in the training stage, please remember to ablate it in evaluation stage.
+
+```bash
+$ CUDA_VISIBLE_DEVICES=0,1 python test.py --evaluation_dir <your_checkpoint> --ablate_attention_info True
+```
+
+If you would like to evaluate the ablation of self-critical sequential training, you can run the following command.
+
+```bash
+$ CUDA_VISIBLE_DEVICES=0,1 python test.py --evaluation_dir <your_checkpoint + '_supervised_save'>
 ```
 

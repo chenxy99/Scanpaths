@@ -6,7 +6,7 @@ def parse_opt():
     parser.add_argument("--mode", type=str, default="train", help="Selecting running mode (default: train)")
     parser.add_argument("--img_dir", type=str, default="./data/images", help="Directory to the image data (stimuli)")
     parser.add_argument("--fix_dir", type=str, default="./data/fixations", help="Directory to the raw fixation file")
-    parser.add_argument("--detector_dir", type=str, default="./data/detectors", help="Directory to the saliency maps")
+    parser.add_argument("--detector_dir", type=str, default="./data/detectors", help="Directory to detector results")
     parser.add_argument("--width", type=int, default=320, help="Width of input data")
     parser.add_argument("--height", type=int, default=240, help="Height of input data")
     parser.add_argument("--map_width", type=int, default=40, help="Height of output data")

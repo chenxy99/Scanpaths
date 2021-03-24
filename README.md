@@ -8,9 +8,14 @@ This code implements the prediction of human scanpaths in three different tasks:
 
 Reference
 ------------------
-If you use our code or data, please cite our paper:
+If you find the code useful in your research, please consider citing the paper.
 ```text
-Anonymous submission for CVPR 2021, paper ID 443.
+@InProceedings{xianyu:2021:scanpath,
+    author={Xianyu Chen and Ming Jiang and Qi Zhao},
+    title = {Predicting Human Scanpaths in Visual Question Answering},
+    booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+    year = {2021}
+}
 ```
 
 Disclaimer
